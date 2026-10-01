@@ -94,7 +94,7 @@ export function requestWithdrawal(amount: number, method: string, number: string
   if (!Number.isFinite(amount) || amount < MIN_WITHDRAW) return `Minimum withdrawal is ${MIN_WITHDRAW} FCFA`;
   if (amount > u.balance) return "Amount is higher than your balance";
   if (!/^\+?\d{8,15}$/.test(number.replace(/\s/g, ""))) return "Enter a valid mobile money number";
-  update((d) => { const x = d.users[d.session!]; x.balance -= amount; x.withdrawals.unshift({ id: crypto.randomUUID(), amount, method, number, date: new Date().toISOString(), status: "processing" }); });
+  update((d) => { const x = d.users[d.session!]!; x.balance -= amount; x.withdrawals.unshift({ id: crypto.randomUUID(), amount, method, number, date: new Date().toISOString(), status: "processing" }); });
   return null;
 }
 export const fcfa = (n: number) => `${n.toLocaleString("fr-FR")} FCFA`;

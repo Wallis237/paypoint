@@ -18,7 +18,7 @@ function Dashboard() {
   if (app.status === "pending") return <Shell><div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-8 text-center"><h1 className="font-display text-3xl font-bold">Application under review</h1><p className="mt-2 text-muted-foreground">Thanks {app.fullName}. We'll review your application shortly.</p><button onClick={acceptApplication} className={`${btnCls} mt-6`}>Demo: approve my application</button></div></Shell>;
 
   const tabs = DOMAINS.filter((d) => app.domains.includes(d.id));
-  const active = tab === "wallet" || app.domains.includes(tab) ? tab : tabs[0].id;
+  const active = tab === "wallet" || app.domains.includes(tab) ? tab : (tabs[0]?.id ?? "wallet");
   const earned = TASKS.filter((t) => user.completed.includes(t.id)).reduce((s, t) => s + t.reward, 0);
   return (
     <Shell>
