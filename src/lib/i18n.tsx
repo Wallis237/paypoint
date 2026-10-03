@@ -68,6 +68,22 @@ const copy = {
   noWithdrawals: { fr: "Aucun retrait pour le moment.", en: "No withdrawals yet." },
   processing: { fr: "En cours", en: "Processing" },
   paid: { fr: "Payé", en: "Paid" },
+  country: { fr: "Pays", en: "Country" },
+  paymentMethod: { fr: "Moyen de paiement mobile", en: "Mobile payment method" },
+  cvUpload: { fr: "Votre CV (PDF, Word)", en: "Your CV (PDF, Word)" },
+  coverUpload: { fr: "Lettre de motivation (PDF, Word)", en: "Cover letter (PDF, Word)" },
+  applyHelp: { fr: "Étape 1 : vos informations · Étape 2 : pays et paiement · Étape 3 : domaines · Étape 4 : CV et lettre.", en: "Step 1: your details · Step 2: country & payment · Step 3: domains · Step 4: CV & cover letter." },
+  reviewTimer: { fr: "Examen en cours — restez sur cette page. Réponse dans", en: "Review in progress — stay on this page. Answer in" },
+  reviewSteps: { fr: "Nos recruteurs vérifient votre CV, votre lettre et vos domaines choisis. Votre tableau de bord s’ouvrira automatiquement.", en: "Our recruiters are checking your CV, cover letter and chosen domains. Your dashboard will open automatically." },
+  dashHelp: { fr: "Instructions : réalisez jusqu’à 2 missions par jour, envoyez une capture d’écran comme preuve, puis votre récompense est ajoutée. Environ 6 jours pour atteindre 2 000 €.", en: "Instructions: complete up to 2 tasks per day, upload a screenshot as proof, then your reward is added. About 6 days to reach €2,000." },
+  todayTasks: { fr: "Missions aujourd’hui", en: "Tasks today" },
+  proofLabel: { fr: "Preuve : capture d’écran de la mission terminée", en: "Proof: screenshot of the completed task" },
+  proofNote: { fr: "Lien ou commentaire (facultatif)", en: "Link or comment (optional)" },
+  submitProof: { fr: "Envoyer la preuve et recevoir", en: "Submit proof & claim" },
+  doneToday: { fr: "Terminée aujourd’hui — revenez demain", en: "Done today — come back tomorrow" },
+  limitReached: { fr: "Limite quotidienne atteinte — revenez demain", en: "Daily limit reached — come back tomorrow" },
+  progressGoal: { fr: "Progression vers 2 000 €", en: "Progress to €2,000" },
+  walletHelp: { fr: "Instructions : choisissez le moyen de paiement de votre pays, saisissez votre numéro et un montant d’au moins 2 000 €.", en: "Instructions: choose your country’s payment method, enter your number and an amount of at least €2,000." },
 } as const;
 
 type CopyKey = keyof typeof copy;
@@ -103,6 +119,9 @@ const errors: Record<string, string> = {
   "Withdrawals are only open on Saturdays from 10:00 to 15:00": "Les retraits sont ouverts uniquement le samedi de 10 h à 15 h",
   "Amount is higher than your balance": "Le montant dépasse votre solde",
   "Enter a valid mobile money number": "Saisissez un numéro mobile money valide",
+  "Upload a proof screenshot first": "Envoyez d’abord une capture d’écran comme preuve",
+  "Task already done today": "Mission déjà réalisée aujourd’hui",
+  "Daily task limit reached": "Limite quotidienne de missions atteinte",
 };
 
 export function localizedError(message: string, language: Language) {
