@@ -109,8 +109,8 @@ function Wallet() {
   const db = useDB(); const user = currentUser(db);
   const { language, t } = useLanguage();
   const country = user?.application?.country ?? "Cameroon";
-  const methods = PAYMENTS[country] ?? PAYMENTS["Cameroon"];
-  const [amount, setAmount] = useState(""); const [method, setMethod] = useState(user?.application?.payment ?? methods[0]); const [num, setNum] = useState(user?.application?.phone ?? "");
+  const methods: string[] = PAYMENTS[country] ?? ["MTN Mobile Money", "Orange Money"];
+  const [amount, setAmount] = useState(""); const [method, setMethod] = useState<string>(user?.application?.payment ?? methods[0] ?? ""); const [num, setNum] = useState(user?.application?.phone ?? "");
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
   const open = withdrawalOpen(db);
   if (!user) return null;

@@ -41,8 +41,8 @@ function Apply() {
         <p className="rounded-lg bg-secondary p-3 text-sm text-secondary-foreground">{t("applyHelp")}</p>
         <input className={inputCls} placeholder={t("fullName")} value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="text-sm font-semibold">{t("country")}<select className={`${inputCls} mt-1`} value={f.country} onChange={(e) => setF({ ...f, country: e.target.value, payment: PAYMENTS[e.target.value][0] })}>{COUNTRIES.map((c) => <option key={c}>{c}</option>)}</select></label>
-          <label className="text-sm font-semibold">{t("paymentMethod")}<select className={`${inputCls} mt-1`} value={f.payment} onChange={(e) => setF({ ...f, payment: e.target.value })}>{PAYMENTS[f.country].map((p) => <option key={p}>{p}</option>)}</select></label>
+          <label className="text-sm font-semibold">{t("country")}<select className={`${inputCls} mt-1`} value={f.country} onChange={(e) => setF({ ...f, country: e.target.value, payment: PAYMENTS[e.target.value]?.[0] ?? "" })}>{COUNTRIES.map((c) => <option key={c}>{c}</option>)}</select></label>
+          <label className="text-sm font-semibold">{t("paymentMethod")}<select className={`${inputCls} mt-1`} value={f.payment} onChange={(e) => setF({ ...f, payment: e.target.value })}>{(PAYMENTS[f.country] ?? []).map((p) => <option key={p}>{p}</option>)}</select></label>
         </div>
         <input className={inputCls} placeholder={t("phone")} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
         <div className="grid gap-3 sm:grid-cols-2">
