@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SiteHeader, inputCls, btnCls } from "@/components/SiteHeader";
-import { DAILY_LIMIT, DOMAINS, PAYMENTS, REVIEW_MS, TASKS, MIN_WITHDRAW, acceptApplication, completeTask, currentUser, doneToday, eur, requestWithdrawal, setSimulateSaturday, useDB, withdrawalOpen, type Domain, type Task } from "@/lib/store";
+import { DAILY_LIMIT, DOMAINS, PAYMENTS, REVIEW_MS, TASKS, MIN_WITHDRAW, acceptApplication, currentUser, doneToday, eur, requestWithdrawal, setSimulateSaturday, useDB, withdrawalOpen, type Domain, type Task } from "@/lib/store";
 import { localizedError, useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/dashboard")({
@@ -76,30 +76,14 @@ function TabBtn({ on, ...p }: { on: boolean } & React.ButtonHTMLAttributes<HTMLB
 
 function TaskCard({ t, done, limit }: { t: Task; done: boolean; limit: boolean }) {
   const { language, t: translate } = useLanguage();
-  const [left, setLeft] = useState<number | null>(null);
-  const [file, setFile] = useState(""); const [note, setNote] = useState(""); const [err, setErr] = useState("");
-  useEffect(() => {
-    if (left === null || left <= 0) return;
-    const id = setTimeout(() => setLeft(left - 1), 1000);
-    return () => clearTimeout(id);
-  }, [left]);
-  const isVideo = t.domain === "videos";
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="flex items-start justify-between gap-3"><h3 className="font-bold">{language === "fr" ? t.titleFr : t.title}</h3><span className="whitespace-nowrap rounded-full bg-secondary px-3 py-1 text-sm font-semibold text-secondary-foreground">+{eur(t.reward)}</span></div>
       <p className="mt-1 text-sm text-muted-foreground">{language === "fr" ? t.descFr : t.desc}</p>
-      {isVideo && left !== null && !done && <div className="mt-3 flex aspect-video items-center justify-center rounded-xl bg-foreground text-background">{left > 0 ? `▶ ${translate("playing")}… ${left}s` : `✓ ${translate("videoFinished")}`}</div>}
       <div className="mt-4">
         {done ? <span className="font-semibold text-primary">✓ {translate("doneToday")}</span>
           : limit ? <span className="text-sm text-muted-foreground">{translate("limitReached")}</span>
-          : left === null ? <button className={btnCls} onClick={() => setLeft(t.seconds)}>{isVideo ? translate("watchVideo") : translate("startTask")}</button>
-          : left > 0 ? <div><div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full bg-primary transition-all" style={{ width: `${((t.seconds - left) / t.seconds) * 100}%` }} /></div><p className="mt-2 text-sm">{isVideo ? translate("keepWatching") : translate("performing")}… {left}s</p></div>
-          : <div className="space-y-3">
-              <label className="block rounded-xl border border-dashed border-border p-3 text-sm"><span className="font-semibold">{translate("proofLabel")}</span><input type="file" accept="image/*" className="mt-2 block w-full text-sm" onChange={(e) => setFile(e.target.files?.[0]?.name ?? "")} />{file && <span className="mt-1 block text-primary">✓ {file}</span>}</label>
-              <input className={inputCls} maxLength={300} placeholder={translate("proofNote")} value={note} onChange={(e) => setNote(e.target.value)} />
-              {err && <p className="text-sm text-destructive">{err}</p>}
-              <button className={btnCls} onClick={() => { const r = completeTask(t.id, { file, note }); setErr(r ? localizedError(r, language) : ""); }}>{translate("submitProof")}</button>
-            </div>}
+          : <Link to="/task/$id" params={{ id: t.id }} className={`${btnCls} inline-block`}>{translate("startTask")}</Link>}
       </div>
     </div>
   );
