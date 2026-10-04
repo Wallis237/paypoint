@@ -68,7 +68,7 @@ function Index() {
       </section>
       <section className="mx-auto max-w-6xl px-5 py-16">
         <h2 className="font-display text-3xl font-bold">{fr ? "Payé dans votre pays, avec votre mobile money" : "Paid in your country, with your mobile money"}</h2>
-        <p className="mt-3 text-muted-foreground">{fr ? "Gains en euros (€). Environ 150 à 200 € par mission, 2 missions par jour : atteignez le retrait minimum de 2 000 € en 6 jours." : "Earnings in euros (€). About €150–200 per task, 2 tasks a day: reach the €2,000 minimum withdrawal in 6 days."}</p>
+        <p className="mt-3 text-muted-foreground">{fr ? "Gains en euros (€). Chaque mission rapporte 50 €, avec un maximum de 8 missions par jour. Le retrait minimum est de 2 000 €." : "Earnings in euros (€). Each task pays €50, with a maximum of 8 tasks per day. The minimum withdrawal is €2,000."}</p>
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Object.entries(PAYMENTS).map(([c, m]) => <div key={c} className="rounded-xl border border-border p-4"><div className="font-bold">{c}</div><div className="mt-1 text-xs text-muted-foreground">{m.join(" · ")}</div></div>)}
         </div>

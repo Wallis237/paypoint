@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { SiteHeader, inputCls, btnCls } from "@/components/SiteHeader";
 import { DAILY_LIMIT, TASKS, completeTask, currentUser, doneToday, eur, taskLink, useDB } from "@/lib/store";
 import { localizedError, useLanguage } from "@/lib/i18n";
+import { taskImage } from "@/lib/task-images";
 
 export const Route = createFileRoute("/task/$id")({
   head: () => ({ meta: [{ title: "Mission — PayPoint" }, { name: "description", content: "Réalisez votre mission PayPoint et collez le lien comme preuve." }, { property: "og:title", content: "Mission — PayPoint" }, { property: "og:description", content: "Promouvoir, voter ou regarder, puis envoyer la preuve." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -23,6 +24,7 @@ function TaskPage() {
   const { language } = useLanguage();
   const fr = language === "fr";
   const task = TASKS.find((x) => x.id === id);
+  const image = taskImage(id);
   const [left, setLeft] = useState<number | null>(null);
   const [paste, setPaste] = useState(""); const [err, setErr] = useState(""); const [copied, setCopied] = useState(false);
   useEffect(() => { if (left === null || left <= 0) return; const t = setTimeout(() => setLeft(left - 1), 1000); return () => clearTimeout(t); }, [left]);
@@ -38,8 +40,10 @@ function TaskPage() {
       <main className="mx-auto max-w-xl px-5 py-10">
         {back}
         <div className="mt-4 rounded-2xl border border-border bg-card p-6">
-          <div className="flex aspect-video items-center justify-center rounded-xl bg-secondary text-7xl">
-            {task.domain === "videos" && left !== null ? <span className="text-2xl font-bold">{left > 0 ? `▶ ${left}s` : "✓"}</span> : ICON[task.domain]}
+          <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-secondary text-7xl">
+            {task.domain === "videos" && left !== null ? <span className="text-2xl font-bold">{left > 0 ? `▶ ${left}s` : "✓"}</span>
+              : image ? <img src={image.url} alt={fr ? image.altFr : image.altEn} className="h-full w-full object-cover" />
+              : ICON[task.domain]}
           </div>
           <h1 className="font-display mt-4 text-2xl font-bold">{fr ? task.titleFr : task.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{fr ? task.descFr : task.desc}</p>

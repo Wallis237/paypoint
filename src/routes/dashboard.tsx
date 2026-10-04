@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { SiteHeader, inputCls, btnCls } from "@/components/SiteHeader";
 import { DAILY_LIMIT, DOMAINS, PAYMENTS, REVIEW_MS, TASKS, MIN_WITHDRAW, acceptApplication, currentUser, doneToday, eur, requestWithdrawal, setSimulateSaturday, useDB, withdrawalOpen, type Domain, type Task } from "@/lib/store";
 import { localizedError, useLanguage } from "@/lib/i18n";
+import { taskImage } from "@/lib/task-images";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Tableau de bord — PayPoint" }, { name: "description", content: "Vos missions, votre solde et vos retraits PayPoint." }, { property: "og:title", content: "Tableau de bord — PayPoint" }, { property: "og:description", content: "Réalisez des missions et retirez vos gains." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }),
@@ -76,8 +77,10 @@ function TabBtn({ on, ...p }: { on: boolean } & React.ButtonHTMLAttributes<HTMLB
 
 function TaskCard({ t, done, limit }: { t: Task; done: boolean; limit: boolean }) {
   const { language, t: translate } = useLanguage();
+  const image = taskImage(t.id);
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
+      {image && <img src={image.url} alt={language === "fr" ? image.altFr : image.altEn} className="mb-4 aspect-video w-full rounded-xl object-cover" />}
       <div className="flex items-start justify-between gap-3"><h3 className="font-bold">{language === "fr" ? t.titleFr : t.title}</h3><span className="whitespace-nowrap rounded-full bg-secondary px-3 py-1 text-sm font-semibold text-secondary-foreground">+{eur(t.reward)}</span></div>
       <p className="mt-1 text-sm text-muted-foreground">{language === "fr" ? t.descFr : t.desc}</p>
       <div className="mt-4">
