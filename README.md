@@ -1,14 +1,20 @@
-# Welcome to your Lovable project
+# Africa Connect Hub
+
+Let's build a hiring website with the job site on it. this should be a site to employe remote workers in Africa countries especially the francophones. Which when the open the side they have servral domain to employe them. One which it to post and promote other products such as dresses tools perfumes rear watches, etc and other is to promote rear crypto coins and others to vote and promote celebraties and other promtions after applying and accepted the get a dashboard to perform all these tasks they also have the ability to do active like videos and earn little commissions the have the possibility to withdraw into the local money eg mtn mobile money and orange money for Cameroonain the account balance only increases after completing the task. To create an account you need just a username and password repeat the password to make sure it matches withdrawals are done every Saturdays at 10 am to 3pm
+
+They don't need to pay anything. Do this all demo we will add database after all testing is working for the front end all features functional
 
 This project was built with [Lovable](https://lovable.dev).
 
+**Live app**: https://paypointx.lovable.app
+
 ## Build with Lovable
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/efcc6159-0c50-4812-b475-8b2f9b9a9855).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
 
@@ -20,10 +26,3 @@ cd <repository-name>
 npm i
 npm run dev
 ```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
