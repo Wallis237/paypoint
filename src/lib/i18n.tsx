@@ -75,7 +75,7 @@ const copy = {
   applyHelp: { fr: "Étape 1 : vos informations · Étape 2 : pays et paiement · Étape 3 : domaines · Étape 4 : CV et lettre.", en: "Step 1: your details · Step 2: country & payment · Step 3: domains · Step 4: CV & cover letter." },
   reviewTimer: { fr: "Examen en cours — restez sur cette page. Réponse dans", en: "Review in progress — stay on this page. Answer in" },
   reviewSteps: { fr: "Nos recruteurs vérifient votre CV, votre lettre et vos domaines choisis. Votre tableau de bord s’ouvrira automatiquement.", en: "Our recruiters are checking your CV, cover letter and chosen domains. Your dashboard will open automatically." },
-  dashHelp: { fr: "Instructions : réalisez jusqu’à 2 missions par jour, collez le lien de la mission comme preuve, puis votre récompense est ajoutée. Chaque mission rapporte 50 €.", en: "Instructions: complete up to 2 tasks per day, paste the task link as proof, then your reward is added. Each task pays €50." },
+  dashHelp: { fr: "Instructions : réalisez jusqu’à 8 missions par jour, collez le lien de la mission comme preuve, puis votre récompense est ajoutée. Chaque mission rapporte 50 €.", en: "Instructions: complete up to 8 tasks per day, paste the task link as proof, then your reward is added. Each task pays €50." },
   todayTasks: { fr: "Missions aujourd’hui", en: "Tasks today" },
   proofLabel: { fr: "Preuve : capture d’écran de la mission terminée", en: "Proof: screenshot of the completed task" },
   proofNote: { fr: "Lien ou commentaire (facultatif)", en: "Link or comment (optional)" },
