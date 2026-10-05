@@ -57,7 +57,7 @@ function Review({ submittedAt, name }: { submittedAt: number; name: string }) {
   const [now, setNow] = useState(Date.now());
   const left = Math.max(0, submittedAt + REVIEW_MS - now);
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
-  useEffect(() => { if (left === 0) acceptApplication(); }, [left]);
+  useEffect(() => { if (left === 0) void acceptApplication(); }, [left]);
   const mm = String(Math.floor(left / 60000)).padStart(2, "0"); const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, "0");
   return (
     <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-8 text-center">
@@ -110,7 +110,7 @@ function Wallet() {
   if (!user) return null;
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      <form className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6" onSubmit={(e) => { e.preventDefault(); const id = crypto.randomUUID(); const r = requestWithdrawal(Number(amount), method, num, id); if (r) setMsg({ ok: false, t: localizedError(r, language) }); else navigate({ to: "/withdrawals/$id", params: { id } }); }}>
+      <form className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6" onSubmit={async (e) => { e.preventDefault(); const id = crypto.randomUUID(); const r = await requestWithdrawal(Number(amount), method, num, id); if (r) setMsg({ ok: false, t: localizedError(r, language) }); else navigate({ to: "/withdrawals/$id", params: { id } }); }}>
         <h2 className="font-display text-2xl font-bold">{t("withdraw")}</h2>
         <p className="text-sm text-muted-foreground">{t("walletHelp")}</p>
         <p className="rounded-lg bg-secondary p-3 text-sm font-semibold text-secondary-foreground">{t("demoPayoutNotice")}</p>
@@ -120,8 +120,8 @@ function Wallet() {
         <input className={inputCls} type="number" placeholder={`${t("amount")} (min. ${eur(MIN_WITHDRAW)})`} value={amount} onChange={(e) => setAmount(e.target.value)} />
         {msg && <p className={`text-sm ${msg.ok ? "text-primary" : "text-destructive"}`}>{msg.t}</p>}
         <Button type="submit" size="lg" className="h-14 w-full text-base font-bold" disabled={!open}><ArrowUpRight />{t("requestWithdrawal")}</Button>
-        <label className="flex items-center gap-2 border-t border-border pt-4 text-xs text-muted-foreground"><input type="checkbox" checked={!!db?.simulateSaturday} onChange={(e) => setSimulateSaturday(e.target.checked)} />{t("demoSaturday")}</label>
-        <Button type="button" variant="outline" className="h-auto min-h-12 w-full whitespace-normal" onClick={() => { const id = demoWithdrawal(); navigate({ to: "/withdrawals/$id", params: { id } }); }}><WalletIcon />{t("demoWithdraw")}</Button>
+        <label className="flex items-center gap-2 border-t border-border pt-4 text-xs text-muted-foreground"><input type="checkbox" checked={!!db?.simulateSaturday} onChange={(e) => { void setSimulateSaturday(e.target.checked); }} />{t("demoSaturday")}</label>
+        <Button type="button" variant="outline" className="h-auto min-h-12 w-full whitespace-normal" onClick={async () => { const { id, error } = await demoWithdrawal(); if (error) setMsg({ ok: false, t: localizedError(error, language) }); else navigate({ to: "/withdrawals/$id", params: { id } }); }}><WalletIcon />{t("demoWithdraw")}</Button>
       </form>
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="font-display text-2xl font-bold">{t("history")}</h2>

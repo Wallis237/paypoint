@@ -19,7 +19,7 @@ export function SiteHeader() {
             <>
               <Link to="/dashboard" className="hover:text-primary">{t("dashboard")}</Link>
               <span className="hidden text-muted-foreground sm:inline">@{user.username}</span>
-              <button onClick={() => { logout(); nav({ to: "/", replace: true }); }} className="rounded-full border border-border px-4 py-2 hover:bg-secondary">{t("signOut")}</button>
+              <button onClick={async () => { await logout(); nav({ to: "/", replace: true }); }} className="rounded-full border border-border px-4 py-2 hover:bg-secondary">{t("signOut")}</button>
             </>
           ) : (
             <>

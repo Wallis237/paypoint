@@ -59,7 +59,7 @@ function TaskPage() {
                   <p className="text-sm font-semibold">{fr ? "2. Collez-le ici comme preuve :" : "2. Paste it here as proof:"}</p>
                   <input className={inputCls} placeholder={fr ? "Collez le lien" : "Paste the link"} value={paste} onChange={(e) => setPaste(e.target.value)} />
                   {err && <p className="text-sm text-destructive">{err}</p>}
-                  <button className={`${btnCls} w-full`} onClick={() => { const r = completeTask(task.id, paste); setErr(r ? localizedError(r, language) : ""); }}>{fr ? "Envoyer la preuve" : "Submit proof"}</button>
+                  <button className={`${btnCls} w-full`} onClick={async () => { const r = await completeTask(task.id, paste); setErr(r ? localizedError(r, language) : ""); }}>{fr ? "Envoyer la preuve" : "Submit proof"}</button>
                 </div>}
           </div>
         </div>

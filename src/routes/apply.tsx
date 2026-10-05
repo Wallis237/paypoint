@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { SiteHeader, inputCls, btnCls } from "@/components/SiteHeader";
 import { COUNTRIES, DOMAINS, PAYMENTS, currentUser, submitApplication, useDB, type Domain } from "@/lib/store";
-import { useLanguage } from "@/lib/i18n";
+import { useLanguage, localizedError } from "@/lib/i18n";
 
 export const Route = createFileRoute("/apply")({
   head: () => ({ meta: [{ title: "Candidature — PayPoint" }, { name: "description", content: "Candidatez aux domaines d’activité PayPoint." }, { property: "og:title", content: "Candidature — PayPoint" }, { property: "og:description", content: "Choisissez vos domaines et candidatez." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }),
@@ -27,13 +27,14 @@ function Apply() {
   );
   return (
     <div className="min-h-screen"><SiteHeader />
-      <form className="mx-auto my-12 max-w-2xl space-y-5 rounded-2xl border border-border bg-card p-8" onSubmit={(e) => {
+      <form className="mx-auto my-12 max-w-2xl space-y-5 rounded-2xl border border-border bg-card p-8" onSubmit={async (e) => {
         e.preventDefault();
         if (f.fullName.trim().length < 3) return setErr(fr ? "Saisissez votre nom complet" : "Enter your full name");
         if (!/^\+?\d{8,15}$/.test(f.phone.replace(/\s/g, ""))) return setErr(fr ? "Saisissez un numéro valide" : "Enter a valid phone number");
         if (!domains.length) return setErr(fr ? "Sélectionnez au moins un domaine" : "Select at least one domain");
         if (!f.cv || !f.coverLetter) return setErr(fr ? "Ajoutez votre CV et votre lettre de motivation" : "Add your CV and cover letter");
-        submitApplication({ ...f, fullName: f.fullName.trim().slice(0, 100), motivation: f.motivation.slice(0, 500), domains });
+        const error = await submitApplication({ ...f, fullName: f.fullName.trim().slice(0, 100), motivation: f.motivation.slice(0, 500), domains });
+        if (error) return setErr(localizedError(error, language));
         nav({ to: "/dashboard" });
       }}>
         <h1 className="font-display text-3xl font-bold">{t("jobApplication")}</h1>

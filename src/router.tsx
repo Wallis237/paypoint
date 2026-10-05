@@ -1,9 +1,12 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { bindQueryClient } from "./lib/store";
 
 export const getRouter = () => {
   const queryClient = new QueryClient();
+  // Lets the store write mutation results straight into the app's query cache.
+  bindQueryClient(queryClient);
 
   const router = createRouter({
     routeTree,

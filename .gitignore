@@ -16,6 +16,12 @@ dist-ssr
 .nitro
 *.local
 
+# App database (file-backed store)
+.data/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

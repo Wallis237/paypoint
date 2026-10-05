@@ -132,6 +132,16 @@ const errors: Record<string, string> = {
   "Paste the exact task link as proof": "Collez exactement le lien de la mission comme preuve",
   "Task already done today": "Mission déjà réalisée aujourd’hui",
   "Daily task limit reached": "Limite quotidienne de missions atteinte",
+  "Network error — please try again": "Erreur réseau — veuillez réessayer",
+  "Enter your full name": "Saisissez votre nom complet",
+  "Enter a valid phone number": "Saisissez un numéro valide",
+  "Select at least one domain": "Sélectionnez au moins un domaine",
+  "Add your CV and cover letter": "Ajoutez votre CV et votre lettre de motivation",
+  "Choose a payment method": "Choisissez un moyen de paiement",
+  "Complete your application first": "Terminez d’abord votre candidature",
+  "This task is not in one of your chosen domains": "Cette mission ne fait pas partie de vos domaines choisis",
+  "Unknown task": "Mission inconnue",
+  "Invalid withdrawal request": "Demande de retrait invalide",
 };
 
 export function localizedError(message: string, language: Language) {

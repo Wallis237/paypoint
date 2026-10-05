@@ -16,6 +16,15 @@ Continue developing this project in the [Lovable editor](https://lovable.dev/pro
 - **Stay in sync**: every change made in Lovable is committed straight to this repository.
 - **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
+## Backend & database
+
+Accounts, applications, task rewards and withdrawals run on a real backend built with TanStack Start server functions:
+
+- `src/lib/fns.ts` — the RPC surface the browser calls (signup, login, applications, tasks, withdrawals).
+- `src/server/api.ts` — the business rules: scrypt-hashed passwords, httpOnly `pp_session` cookies, server-side proof validation, daily task limits, Saturday 10:00–15:00 withdrawal window and simulated payouts.
+- `src/server/db.ts` — the database: a file-backed store at `.data/paypoint.json` (gitignored) with atomic writes and automatic time transitions (application reviews auto-approve after 10 minutes, demo withdrawals auto-pay after 8 seconds).
+- `src/lib/catalog.ts` — shared types and constants (domains, tasks, payment methods) used by both sides.
+
 ## Development
 
 Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
