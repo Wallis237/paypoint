@@ -52,7 +52,7 @@ export const REVIEW_MS = 10 * 60 * 1000;
 export const today = () => new Date().toISOString().slice(0, 10);
 export const doneToday = (u: User, id?: string) => u.completed.filter((c) => c.startsWith(today() + ":") && (!id || c.endsWith(":" + id)));
 
-export type Withdrawal = { id: string; amount: number; method: string; number: string; date: string; status: "processing" | "paid" };
+export type Withdrawal = { id: string; amount: number; method: string; number: string; date: string; status: "processing" | "paid"; demo?: boolean };
 export type Application = { fullName: string; country: string; phone: string; domains: Domain[]; motivation: string; payment: string; cv: string; coverLetter: string; submittedAt: number; status: "pending" | "accepted" };
 export type Proof = { taskId: string; date: string; link: string };
 export const taskLink = (username: string, id: string) => `https://paypoint.eu/p/${id}/${username}`;
@@ -117,22 +117,34 @@ export function withdrawalOpen(db: DB | null, now = new Date()) {
   return now.getDay() === 6 && h >= 10 && h < 15;
 }
 export const MIN_WITHDRAW = 2000;
-export function requestWithdrawal(amount: number, method: string, number: string): string | null {
+export function requestWithdrawal(amount: number, method: string, number: string, id = crypto.randomUUID()): string | null {
   const db = load(); const u = currentUser(db);
   if (!u) return "Not signed in";
   if (!withdrawalOpen(db)) return "Withdrawals are only open on Saturdays from 10:00 to 15:00";
   if (!Number.isFinite(amount) || amount < MIN_WITHDRAW) return `Minimum withdrawal is ${MIN_WITHDRAW} €`;
   if (amount > u.balance) return "Amount is higher than your balance";
   if (!/^\+?\d{8,15}$/.test(number.replace(/\s/g, ""))) return "Enter a valid mobile money number";
-  update((d) => { const x = d.users[d.session!]!; x.balance -= amount; x.withdrawals.unshift({ id: crypto.randomUUID(), amount, method, number, date: new Date().toISOString(), status: "processing" }); });
+  update((d) => { const x = currentUser(d); if (!x) return; x.balance -= amount; x.withdrawals.unshift({ id, amount, method, number, date: new Date().toISOString(), status: "processing", demo: true }); });
   return null;
 }
 export const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 export function demoWithdrawal() {
+  const id = crypto.randomUUID();
   update((d) => {
-    const x = d.users[d.session!]; if (!x) return;
+    const x = currentUser(d); if (!x) return;
     const method = x.application?.payment ?? "MTN Mobile Money";
     const number = x.application?.phone ?? "+237600000000";
-    x.withdrawals.unshift({ id: crypto.randomUUID(), amount: MIN_WITHDRAW, method, number, date: new Date().toISOString(), status: "paid" });
+    x.withdrawals.unshift({ id, amount: MIN_WITHDRAW, method, number, date: new Date().toISOString(), status: "processing", demo: true });
+  });
+  return id;
+}
+
+export const DEMO_WITHDRAWAL_MS = 8000;
+export function finishDemoWithdrawal(id: string) {
+  const withdrawal = currentUser(load())?.withdrawals.find((w) => w.id === id);
+  if (!withdrawal?.demo || withdrawal.status !== "processing" || Date.now() < Date.parse(withdrawal.date) + DEMO_WITHDRAWAL_MS) return;
+  update((db) => {
+    const w = currentUser(db)?.withdrawals.find((item) => item.id === id);
+    if (w?.demo) w.status = "paid";
   });
 }

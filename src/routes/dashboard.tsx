@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowUpRight, Wallet as WalletIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { SiteHeader, inputCls, btnCls } from "@/components/SiteHeader";
 import { DAILY_LIMIT, DOMAINS, PAYMENTS, REVIEW_MS, TASKS, MIN_WITHDRAW, acceptApplication, currentUser, demoWithdrawal, doneToday, eur, requestWithdrawal, setSimulateSaturday, useDB, withdrawalOpen, type Domain, type Task } from "@/lib/store";
@@ -6,6 +8,7 @@ import { localizedError, useLanguage } from "@/lib/i18n";
 import { taskImage } from "@/lib/task-images";
 
 export const Route = createFileRoute("/dashboard")({
+  validateSearch: (search: Record<string, unknown>): { wallet?: boolean } => ({ wallet: search["wallet"] === true || search["wallet"] === "true" }),
   head: () => ({ meta: [{ title: "Tableau de bord — PayPoint" }, { name: "description", content: "Vos missions, votre solde et vos retraits PayPoint." }, { property: "og:title", content: "Tableau de bord — PayPoint" }, { property: "og:description", content: "Réalisez des missions et retirez vos gains." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }),
   component: Dashboard,
 });
@@ -13,7 +16,9 @@ export const Route = createFileRoute("/dashboard")({
 function Dashboard() {
   const db = useDB(); const user = currentUser(db);
   const { language, t } = useLanguage();
-  const [tab, setTab] = useState<Domain | "wallet">("products");
+  const { wallet } = Route.useSearch();
+  const [tab, setTab] = useState<Domain | "wallet">(wallet ? "wallet" : "products");
+  useEffect(() => { if (wallet) setTab("wallet"); }, [wallet]);
   if (!db) return null;
   if (!user) return <Shell><p className="text-center"><Link to="/login" className="text-primary underline">{t("pleaseSignIn")}</Link></p></Shell>;
   const app = user.application;
@@ -33,6 +38,7 @@ function Dashboard() {
         <Stat label={t("todayTasks")} value={`${today} / ${DAILY_LIMIT}`} />
       </div>
       <div className="mt-4"><div className="flex justify-between text-sm"><span>{t("progressGoal")}</span><span>{eur(Math.min(user.balance, MIN_WITHDRAW))}</span></div><div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full bg-primary" style={{ width: `${Math.min(100, (user.balance / MIN_WITHDRAW) * 100)}%` }} /></div></div>
+      <Button size="lg" className="mt-5 h-12 w-full text-base font-bold sm:w-auto" onClick={() => setTab("wallet")}><WalletIcon />{t("withdraw")}<ArrowUpRight /></Button>
       <div className="mt-8 flex flex-wrap gap-2">
         {tabs.map((d) => <TabBtn key={d.id} on={active === d.id} onClick={() => setTab(d.id)}>{language === "fr" ? d.fr : d.name}</TabBtn>)}
         <TabBtn on={active === "wallet"} onClick={() => setTab("wallet")}>{t("wallet")}</TabBtn>
@@ -93,6 +99,7 @@ function TaskCard({ t, done, limit }: { t: Task; done: boolean; limit: boolean }
 }
 
 function Wallet() {
+  const navigate = useNavigate();
   const db = useDB(); const user = currentUser(db);
   const { language, t } = useLanguage();
   const country = user?.application?.country ?? "Cameroon";
@@ -103,22 +110,23 @@ function Wallet() {
   if (!user) return null;
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      <form className="space-y-4 rounded-2xl border border-border bg-card p-6" onSubmit={(e) => { e.preventDefault(); const r = requestWithdrawal(Number(amount), method, num); setMsg(r ? { ok: false, t: localizedError(r, language) } : { ok: true, t: t("withdrawalSuccess") }); if (!r) setAmount(""); }}>
+      <form className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6" onSubmit={(e) => { e.preventDefault(); const id = crypto.randomUUID(); const r = requestWithdrawal(Number(amount), method, num, id); if (r) setMsg({ ok: false, t: localizedError(r, language) }); else navigate({ to: "/withdrawals/$id", params: { id } }); }}>
         <h2 className="font-display text-2xl font-bold">{t("withdraw")}</h2>
         <p className="text-sm text-muted-foreground">{t("walletHelp")}</p>
+        <p className="rounded-lg bg-secondary p-3 text-sm font-semibold text-secondary-foreground">{t("demoPayoutNotice")}</p>
         <div className={`rounded-lg p-3 text-sm ${open ? "bg-secondary" : "bg-muted text-muted-foreground"}`}>{open ? t("withdrawalOpen") : t("withdrawalClosed")}</div>
         <label className="block text-sm font-semibold">{t("paymentMethod")} · {country}<select className={`${inputCls} mt-1`} value={method} onChange={(e) => setMethod(e.target.value)}>{methods.map((m) => <option key={m}>{m}</option>)}</select></label>
         <input className={inputCls} placeholder={t("mobileNumber")} value={num} onChange={(e) => setNum(e.target.value)} />
         <input className={inputCls} type="number" placeholder={`${t("amount")} (min. ${eur(MIN_WITHDRAW)})`} value={amount} onChange={(e) => setAmount(e.target.value)} />
         {msg && <p className={`text-sm ${msg.ok ? "text-primary" : "text-destructive"}`}>{msg.t}</p>}
-        <button className={btnCls} disabled={!open}>{t("requestWithdrawal")}</button>
+        <Button type="submit" size="lg" className="h-14 w-full text-base font-bold" disabled={!open}><ArrowUpRight />{t("requestWithdrawal")}</Button>
         <label className="flex items-center gap-2 border-t border-border pt-4 text-xs text-muted-foreground"><input type="checkbox" checked={!!db?.simulateSaturday} onChange={(e) => setSimulateSaturday(e.target.checked)} />{t("demoSaturday")}</label>
-        <button type="button" onClick={() => { demoWithdrawal(); setMsg({ ok: true, t: language === "fr" ? "Démo : retrait de 2 000 € simulé et payé." : "Demo: €2,000 withdrawal simulated and paid." }); }} className="text-xs text-muted-foreground underline">{language === "fr" ? "Démo : simuler un retrait payé" : "Demo: simulate a paid withdrawal"}</button>
+        <Button type="button" variant="outline" className="h-auto min-h-12 w-full whitespace-normal" onClick={() => { const id = demoWithdrawal(); navigate({ to: "/withdrawals/$id", params: { id } }); }}><WalletIcon />{t("demoWithdraw")}</Button>
       </form>
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="font-display text-2xl font-bold">{t("history")}</h2>
         {user.withdrawals.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">{t("noWithdrawals")}</p> : (
-          <ul className="mt-3 divide-y divide-border">{user.withdrawals.map((w) => <li key={w.id} className="flex justify-between py-3 text-sm"><div><div className="font-semibold">{eur(w.amount)}</div><div className="text-muted-foreground">{w.method} · {w.number}</div></div><div className="text-right"><div>{new Date(w.date).toLocaleDateString(language === "fr" ? "fr-FR" : "en-GB")}</div><div className="text-accent">{t(w.status)}</div></div></li>)}</ul>
+          <ul className="mt-3 divide-y divide-border">{user.withdrawals.map((w) => <li key={w.id} className="py-3 text-sm"><Link to="/withdrawals/$id" params={{ id: w.id }} aria-label={`${t("viewWithdrawal")} ${eur(w.amount)}`} className="flex justify-between gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"><div className="min-w-0"><div className="font-semibold">{eur(w.amount)}</div><div className="break-words text-muted-foreground">{w.method} · {w.number}</div><span className="text-xs text-muted-foreground">{t("withdrawalSimulated")}</span></div><div className="shrink-0 text-right"><div>{new Date(w.date).toLocaleDateString(language === "fr" ? "fr-FR" : "en-GB")}</div><div className="font-semibold text-primary">{t(w.status)} <ArrowUpRight className="inline size-4" /></div></div></Link></li>)}</ul>
         )}
       </div>
     </div>

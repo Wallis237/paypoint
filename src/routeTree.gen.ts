@@ -15,6 +15,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TaskIdRouteImport } from './routes/task.$id'
+import { Route as WithdrawalsIdRouteImport } from './routes/withdrawals.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const TaskIdRoute = TaskIdRouteImport.update({
   path: '/task/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WithdrawalsIdRoute = WithdrawalsIdRouteImport.update({
+  id: '/withdrawals/$id',
+  path: '/withdrawals/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/task/$id': typeof TaskIdRoute
+  '/withdrawals/$id': typeof WithdrawalsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/task/$id': typeof TaskIdRoute
+  '/withdrawals/$id': typeof WithdrawalsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,12 +79,27 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/task/$id': typeof TaskIdRoute
+  '/withdrawals/$id': typeof WithdrawalsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/apply' | '/dashboard' | '/login' | '/signup' | '/task/$id'
+  fullPaths:
+    | '/'
+    | '/apply'
+    | '/dashboard'
+    | '/login'
+    | '/signup'
+    | '/task/$id'
+    | '/withdrawals/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/apply' | '/dashboard' | '/login' | '/signup' | '/task/$id'
+  to:
+    | '/'
+    | '/apply'
+    | '/dashboard'
+    | '/login'
+    | '/signup'
+    | '/task/$id'
+    | '/withdrawals/$id'
   id:
     | '__root__'
     | '/'
@@ -85,6 +108,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/task/$id'
+    | '/withdrawals/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,6 +118,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   TaskIdRoute: typeof TaskIdRoute
+  WithdrawalsIdRoute: typeof WithdrawalsIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -140,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TaskIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/withdrawals/$id': {
+      id: '/withdrawals/$id'
+      path: '/withdrawals/$id'
+      fullPath: '/withdrawals/$id'
+      preLoaderRoute: typeof WithdrawalsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   TaskIdRoute: TaskIdRoute,
+  WithdrawalsIdRoute: WithdrawalsIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

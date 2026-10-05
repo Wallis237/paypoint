@@ -11,3 +11,4 @@
 - Demo data lives in localStorage via src/lib/store.ts; swap its functions for a backend later. Why: user wants frontend-only testing first.
 - All visitor-facing copy uses the shared language context with French as the default and English as the alternative. Why: PayPoint serves Francophone Africa while supporting English readers.
 - Task artwork is resolved through src/lib/task-images.ts. Why: dashboard cards and task detail pages must use one consistent image and bilingual description per task.
+- Withdrawal tracking uses a dedicated /withdrawals/$id route with a persisted demo flag and elapsed-time completion in the store. Why: reloads preserve progress and simulated payments cannot be mistaken for real payouts.
