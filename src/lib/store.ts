@@ -128,3 +128,11 @@ export function requestWithdrawal(amount: number, method: string, number: string
   return null;
 }
 export const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+export function demoWithdrawal() {
+  update((d) => {
+    const x = d.users[d.session!]; if (!x) return;
+    const method = x.application?.payment ?? "MTN Mobile Money";
+    const number = x.application?.phone ?? "+237600000000";
+    x.withdrawals.unshift({ id: crypto.randomUUID(), amount: MIN_WITHDRAW, method, number, date: new Date().toISOString(), status: "paid" });
+  });
+}
