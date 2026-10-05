@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SiteHeader, inputCls, btnCls } from "@/components/SiteHeader";
-import { DAILY_LIMIT, DOMAINS, PAYMENTS, REVIEW_MS, TASKS, MIN_WITHDRAW, acceptApplication, currentUser, doneToday, eur, requestWithdrawal, setSimulateSaturday, useDB, withdrawalOpen, type Domain, type Task } from "@/lib/store";
+import { DAILY_LIMIT, DOMAINS, PAYMENTS, REVIEW_MS, TASKS, MIN_WITHDRAW, acceptApplication, currentUser, demoWithdrawal, doneToday, eur, requestWithdrawal, setSimulateSaturday, useDB, withdrawalOpen, type Domain, type Task } from "@/lib/store";
 import { localizedError, useLanguage } from "@/lib/i18n";
 import { taskImage } from "@/lib/task-images";
 
