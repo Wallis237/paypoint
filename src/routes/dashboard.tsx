@@ -113,6 +113,7 @@ function Wallet() {
         {msg && <p className={`text-sm ${msg.ok ? "text-primary" : "text-destructive"}`}>{msg.t}</p>}
         <button className={btnCls} disabled={!open}>{t("requestWithdrawal")}</button>
         <label className="flex items-center gap-2 border-t border-border pt-4 text-xs text-muted-foreground"><input type="checkbox" checked={!!db?.simulateSaturday} onChange={(e) => setSimulateSaturday(e.target.checked)} />{t("demoSaturday")}</label>
+        <button type="button" onClick={() => { demoWithdrawal(); setMsg({ ok: true, t: language === "fr" ? "Démo : retrait de 2 000 € simulé et payé." : "Demo: €2,000 withdrawal simulated and paid." }); }} className="text-xs text-muted-foreground underline">{language === "fr" ? "Démo : simuler un retrait payé" : "Demo: simulate a paid withdrawal"}</button>
       </form>
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="font-display text-2xl font-bold">{t("history")}</h2>
