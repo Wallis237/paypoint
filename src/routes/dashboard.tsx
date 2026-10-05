@@ -8,7 +8,7 @@ import { localizedError, useLanguage } from "@/lib/i18n";
 import { taskImage } from "@/lib/task-images";
 
 export const Route = createFileRoute("/dashboard")({
-  validateSearch: (search: Record<string, unknown>) => ({ wallet: search.wallet === true || search.wallet === "true" }),
+  validateSearch: (search: Record<string, unknown>): { wallet?: boolean } => ({ wallet: search["wallet"] === true || search["wallet"] === "true" }),
   head: () => ({ meta: [{ title: "Tableau de bord — PayPoint" }, { name: "description", content: "Vos missions, votre solde et vos retraits PayPoint." }, { property: "og:title", content: "Tableau de bord — PayPoint" }, { property: "og:description", content: "Réalisez des missions et retirez vos gains." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }),
   component: Dashboard,
 });
