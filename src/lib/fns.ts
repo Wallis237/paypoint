@@ -14,7 +14,7 @@ export type MeResult = { user: User | null };
 
 export const getMe = createServerFn({ method: "POST" }).handler(async (): Promise<MeResult> => {
   const { me } = await import("../server/api");
-  return { user: me() };
+  return { user: await me() };
 });
 
 export const signup = createServerFn({ method: "POST" })

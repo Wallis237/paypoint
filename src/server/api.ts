@@ -20,7 +20,15 @@ import {
   type Application,
   type User,
 } from "../lib/catalog";
-import { createSession, findSession, mutate, readDb, toPublicUser, type StoredUser } from "./db";
+import {
+  createSession,
+  findSession,
+  mutate,
+  readDb,
+  toPublicUser,
+  type Db,
+  type StoredUser,
+} from "./db";
 
 export const SESSION_COOKIE = "pp_session";
 const SESSION_MAX_AGE_S = 30 * 24 * 60 * 60;
@@ -59,20 +67,24 @@ function startSession(token: string): void {
   });
 }
 
-function currentUser(db = readDb()): StoredUser | null {
+function sessionUser(db: Db): StoredUser | null {
   return findSession(db, readToken());
 }
 
 // --- reads -----------------------------------------------------------------
 
-export function me(): User | null {
-  const user = currentUser();
+export async function me(): Promise<User | null> {
+  const user = sessionUser(await readDb());
   return user ? toPublicUser(user) : null;
 }
 
 // --- accounts --------------------------------------------------------------
 
-export function signup(input: { username: string; password: string; confirm: string }): OpResult {
+export async function signup(input: {
+  username: string;
+  password: string;
+  confirm: string;
+}): Promise<OpResult> {
   const username = input.username.trim().toLowerCase();
   if (!/^[a-z0-9_]{3,20}$/.test(username))
     return { error: "Username: 3–20 letters, numbers or _", user: null };
@@ -81,7 +93,7 @@ export function signup(input: { username: string; password: string; confirm: str
   if (input.password !== input.confirm) return { error: "Passwords do not match", user: null };
   const passwordHash = hashPassword(input.password);
 
-  const outcome = mutate((db) => {
+  const outcome = await mutate((db) => {
     if (db.users[username]) return { ok: false as const, error: "Username already taken" };
     const user: StoredUser = {
       username,
@@ -103,9 +115,9 @@ export function signup(input: { username: string; password: string; confirm: str
   return { error: null, user: outcome.user };
 }
 
-export function login(input: { username: string; password: string }): OpResult {
+export async function login(input: { username: string; password: string }): Promise<OpResult> {
   const username = input.username.trim().toLowerCase();
-  const outcome = mutate((db) => {
+  const outcome = await mutate((db) => {
     const user = db.users[username];
     if (!user || !verifyPassword(input.password, user.passwordHash)) {
       return { ok: false as const, error: "Wrong username or password" };
@@ -119,9 +131,9 @@ export function login(input: { username: string; password: string }): OpResult {
   return { error: null, user: outcome.user };
 }
 
-export function logout(): OpResult {
+export async function logout(): Promise<OpResult> {
   const token = readToken();
-  mutate((db) => {
+  await mutate((db) => {
     if (token) delete db.sessions[token];
   });
   deleteCookie(SESSION_COOKIE, { path: "/" });
@@ -130,7 +142,9 @@ export function logout(): OpResult {
 
 // --- applications ----------------------------------------------------------
 
-export function submitApplication(input: Omit<Application, "status" | "submittedAt">): OpResult {
+export async function submitApplication(
+  input: Omit<Application, "status" | "submittedAt">,
+): Promise<OpResult> {
   if (input.fullName.trim().length < 3) return { error: "Enter your full name", user: null };
   if (!/^\+?\d{8,15}$/.test(input.phone.replace(/\s/g, "")))
     return { error: "Enter a valid phone number", user: null };
@@ -142,7 +156,7 @@ export function submitApplication(input: Omit<Application, "status" | "submitted
     return { error: "Choose a payment method", user: null };
 
   return mutate((db) => {
-    const user = currentUser(db);
+    const user = sessionUser(db);
     if (!user) return { error: "Not signed in", user: null };
     user.application = {
       fullName: input.fullName.trim().slice(0, 100),
@@ -160,9 +174,9 @@ export function submitApplication(input: Omit<Application, "status" | "submitted
   });
 }
 
-export function approveApplication(): OpResult {
+export async function approveApplication(): Promise<OpResult> {
   return mutate((db) => {
-    const user = currentUser(db);
+    const user = sessionUser(db);
     if (!user) return { error: "Not signed in", user: null };
     if (user.application) user.application.status = "accepted";
     return { error: null, user: toPublicUser(user) };
@@ -171,12 +185,12 @@ export function approveApplication(): OpResult {
 
 // --- tasks -----------------------------------------------------------------
 
-export function completeTask(taskId: string, link: string): OpResult {
+export async function completeTask(taskId: string, link: string): Promise<OpResult> {
   const task = TASKS.find((t) => t.id === taskId);
   if (!task) return { error: "Unknown task", user: null };
 
   return mutate((db) => {
-    const user = currentUser(db);
+    const user = sessionUser(db);
     if (!user) return { error: "Not signed in", user: null };
     const app = user.application;
     if (!app || app.status !== "accepted")
@@ -206,14 +220,14 @@ function requireAccepted(user: StoredUser): string | null {
   return null;
 }
 
-export function requestWithdrawal(input: {
+export async function requestWithdrawal(input: {
   amount: number;
   method: string;
   number: string;
   id: string;
-}): OpResult {
+}): Promise<OpResult> {
   return mutate((db) => {
-    const user = currentUser(db);
+    const user = sessionUser(db);
     if (!user) return { error: "Not signed in", user: null };
     const blocked = requireAccepted(user);
     if (blocked) return { error: blocked, user: null };
@@ -246,9 +260,9 @@ export function requestWithdrawal(input: {
   });
 }
 
-export function createDemoWithdrawal(id: string): OpResult {
+export async function createDemoWithdrawal(id: string): Promise<OpResult> {
   return mutate((db) => {
-    const user = currentUser(db);
+    const user = sessionUser(db);
     if (!user) return { error: "Not signed in", user: null };
     const blocked = requireAccepted(user);
     if (blocked) return { error: blocked, user: null };
@@ -273,9 +287,9 @@ export function createDemoWithdrawal(id: string): OpResult {
 
 // --- demo helpers ----------------------------------------------------------
 
-export function setSimulateSaturday(value: boolean): OpResult {
+export async function setSimulateSaturday(value: boolean): Promise<OpResult> {
   return mutate((db) => {
-    const user = currentUser(db);
+    const user = sessionUser(db);
     if (!user) return { error: "Not signed in", user: null };
     user.simulateSaturday = value;
     return { error: null, user: toPublicUser(user) };

@@ -1,7 +1,9 @@
 // Targeted tests for the backend added in this change: accounts/sessions,
 // applications, task rewards and withdrawals. The cookie layer is mocked so
 // each test drives the real api.ts + db.ts code against an isolated temp
-// database directory (never the dev .data/ store).
+// database directory (never the dev .data/ store). MONGODB_URI is removed for
+// the run so the tests always exercise the file backend and never a real
+// database, even when the surrounding shell has credentials set.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -50,9 +52,9 @@ function requireUser(result: { user: unknown }): User {
   return result.user as User;
 }
 
-function createUser(): User {
+async function createUser(): Promise<User> {
   const username = `alice_${Math.random().toString(36).slice(2, 10)}`;
-  const result = api.signup({ username, password: "secret12", confirm: "secret12" });
+  const result = await api.signup({ username, password: "secret12", confirm: "secret12" });
   expect(result.error).toBeNull();
   return requireUser(result);
 }
@@ -82,6 +84,8 @@ const WD = (id: string) => ({
 
 beforeAll(() => {
   originalDbDir = process.env["PAYPOINT_DB_DIR"];
+  // Force the file backend: these tests must never talk to a real MongoDB.
+  delete process.env["MONGODB_URI"];
 });
 
 afterAll(() => {
@@ -99,56 +103,57 @@ describe("accounts and sessions", () => {
     await loadApi();
   });
 
-  it("signs up, opens a session and never exposes credentials", () => {
-    const result = api.signup({ username: "alice_1", password: "secret12", confirm: "secret12" });
+  it("signs up, opens a session and never exposes credentials", async () => {
+    const result = await api.signup({
+      username: "alice_1",
+      password: "secret12",
+      confirm: "secret12",
+    });
     expect(result.error).toBeNull();
     const user = requireUser(result);
     expect(user.username).toBe("alice_1");
     expect(user.balance).toBe(0);
     expect(JSON.stringify(user)).not.toMatch(/password/i);
-    expect(api.me()?.username).toBe("alice_1");
+    expect((await api.me())?.username).toBe("alice_1");
   });
 
-  it("rejects invalid and duplicate signups", () => {
-    expect(api.signup({ username: "x", password: "secret12", confirm: "secret12" }).error).toBe(
-      "Username: 3–20 letters, numbers or _",
-    );
-    expect(api.signup({ username: "alice_2", password: "short", confirm: "short" }).error).toBe(
-      "Password must be at least 6 characters",
-    );
+  it("rejects invalid and duplicate signups", async () => {
     expect(
-      api.signup({ username: "alice_2", password: "secret12", confirm: "secret13" }).error,
+      (await api.signup({ username: "x", password: "secret12", confirm: "secret12" })).error,
+    ).toBe("Username: 3–20 letters, numbers or _");
+    expect(
+      (await api.signup({ username: "alice_2", password: "short", confirm: "short" })).error,
+    ).toBe("Password must be at least 6 characters");
+    expect(
+      (await api.signup({ username: "alice_2", password: "secret12", confirm: "secret13" })).error,
     ).toBe("Passwords do not match");
     expect(
-      api.signup({ username: "alice_3", password: "secret12", confirm: "secret12" }).error,
+      (await api.signup({ username: "alice_3", password: "secret12", confirm: "secret12" })).error,
     ).toBeNull();
     expect(
-      api.signup({ username: "alice_3", password: "secret12", confirm: "secret12" }).error,
+      (await api.signup({ username: "alice_3", password: "secret12", confirm: "secret12" })).error,
     ).toBe("Username already taken");
   });
 
-  it("validates login and clears the session on logout", () => {
-    const user = createUser();
+  it("validates login and clears the session on logout", async () => {
+    const user = await createUser();
     session.cookies.clear();
-    expect(api.me()).toBeNull();
-    expect(api.login({ username: user.username, password: "nope" }).error).toBe(
+    expect(await api.me()).toBeNull();
+    expect((await api.login({ username: user.username, password: "nope" })).error).toBe(
       "Wrong username or password",
     );
-    expect(api.me()).toBeNull();
-    expect(api.login({ username: user.username, password: "secret12" }).error).toBeNull();
-    expect(api.me()?.username).toBe(user.username);
-    expect(api.logout().user).toBeNull();
-    expect(api.me()).toBeNull();
+    expect(await api.me()).toBeNull();
+    expect((await api.login({ username: user.username, password: "secret12" })).error).toBeNull();
+    expect((await api.me())?.username).toBe(user.username);
+    expect((await api.logout()).user).toBeNull();
+    expect(await api.me()).toBeNull();
   });
 
-  it("persists accounts across a server restart", () => {
-    const user = createUser();
+  it("persists accounts across a server restart", async () => {
+    const user = await createUser();
     vi.resetModules();
-    api = api satisfies Api; // keep the type, swap the instance below
-    return import("../server/api").then((reloaded) => {
-      api = reloaded;
-      expect(api.me()?.username).toBe(user.username);
-    });
+    api = await import("../server/api");
+    expect((await api.me())?.username).toBe(user.username);
   });
 });
 
@@ -157,14 +162,14 @@ describe("applications", () => {
     await loadApi();
   });
 
-  it("stores a pending application and validates input", () => {
-    expect(api.submitApplication(appInput(["products"])).error).toBe("Not signed in");
-    createUser();
-    expect(api.submitApplication(appInput([])).error).toBe("Select at least one domain");
-    expect(api.submitApplication({ ...appInput(["products"]), phone: "abc" }).error).toBe(
+  it("stores a pending application and validates input", async () => {
+    expect((await api.submitApplication(appInput(["products"]))).error).toBe("Not signed in");
+    await createUser();
+    expect((await api.submitApplication(appInput([]))).error).toBe("Select at least one domain");
+    expect((await api.submitApplication({ ...appInput(["products"]), phone: "abc" })).error).toBe(
       "Enter a valid phone number",
     );
-    const result = api.submitApplication(appInput(["products", "videos"]));
+    const result = await api.submitApplication(appInput(["products", "videos"]));
     expect(result.error).toBeNull();
     expect(requireUser(result).application?.status).toBe("pending");
   });
@@ -173,11 +178,11 @@ describe("applications", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-03-02T09:00:00Z"));
     await loadApi();
-    createUser();
-    expect(api.submitApplication(appInput(["products"])).error).toBeNull();
-    expect(api.me()?.application?.status).toBe("pending");
+    await createUser();
+    expect((await api.submitApplication(appInput(["products"]))).error).toBeNull();
+    expect((await api.me())?.application?.status).toBe("pending");
     vi.setSystemTime(Date.now() + REVIEW_MS + 1000);
-    expect(api.me()?.application?.status).toBe("accepted");
+    expect((await api.me())?.application?.status).toBe("accepted");
   });
 });
 
@@ -186,57 +191,57 @@ describe("tasks", () => {
     await loadApi();
   });
 
-  it("gates tasks behind an accepted application and a session", () => {
-    const user = createUser();
+  it("gates tasks behind an accepted application and a session", async () => {
+    const user = await createUser();
     const link = taskLink(user.username, "p1");
-    expect(api.completeTask("p1", link).error).toBe("Complete your application first");
-    api.submitApplication(appInput(ALL_DOMAINS));
-    expect(api.completeTask("p1", link).error).toBe("Complete your application first");
+    expect((await api.completeTask("p1", link)).error).toBe("Complete your application first");
+    await api.submitApplication(appInput(ALL_DOMAINS));
+    expect((await api.completeTask("p1", link)).error).toBe("Complete your application first");
     session.cookies.clear();
-    expect(api.completeTask("p1", link).error).toBe("Not signed in");
+    expect((await api.completeTask("p1", link)).error).toBe("Not signed in");
     session.cookies.set("pp_session", "restored");
-    api.login({ username: user.username, password: "secret12" });
-    expect(api.approveApplication().user?.application?.status).toBe("accepted");
+    await api.login({ username: user.username, password: "secret12" });
+    expect((await api.approveApplication()).user?.application?.status).toBe("accepted");
   });
 
-  it("validates proof link and domain, then credits the reward once", () => {
-    const user = createUser();
-    api.submitApplication(appInput(["products", "videos"]));
-    api.approveApplication();
+  it("validates proof link and domain, then credits the reward once", async () => {
+    const user = await createUser();
+    await api.submitApplication(appInput(["products", "videos"]));
+    await api.approveApplication();
 
-    expect(api.completeTask("p1", "https://example.com/wrong").error).toBe(
+    expect((await api.completeTask("p1", "https://example.com/wrong")).error).toBe(
       "Paste the exact task link as proof",
     );
-    expect(api.completeTask("c1", taskLink(user.username, "c1")).error).toBe(
+    expect((await api.completeTask("c1", taskLink(user.username, "c1"))).error).toBe(
       "This task is not in one of your chosen domains",
     );
 
-    const done = api.completeTask("p1", taskLink(user.username, "p1"));
+    const done = await api.completeTask("p1", taskLink(user.username, "p1"));
     expect(done.error).toBeNull();
     expect(requireUser(done).balance).toBe(50);
     expect(requireUser(done).completed).toHaveLength(1);
     expect(requireUser(done).proofs[0]?.taskId).toBe("p1");
 
-    expect(api.completeTask("p1", taskLink(user.username, "p1")).error).toBe(
+    expect((await api.completeTask("p1", taskLink(user.username, "p1"))).error).toBe(
       "Task already done today",
     );
-    expect(api.me()?.balance).toBe(50);
+    expect((await api.me())?.balance).toBe(50);
   });
 
-  it("enforces the daily task limit", () => {
-    const user = createUser();
-    api.submitApplication(appInput(ALL_DOMAINS));
-    api.approveApplication();
+  it("enforces the daily task limit", async () => {
+    const user = await createUser();
+    await api.submitApplication(appInput(ALL_DOMAINS));
+    await api.approveApplication();
     for (const task of TASKS.slice(0, DAILY_LIMIT)) {
-      expect(api.completeTask(task.id, taskLink(user.username, task.id)).error).toBeNull();
+      expect((await api.completeTask(task.id, taskLink(user.username, task.id))).error).toBeNull();
     }
     const nextTask = TASKS[DAILY_LIMIT];
     expect(nextTask).toBeDefined();
     if (!nextTask) return;
-    expect(api.completeTask(nextTask.id, taskLink(user.username, nextTask.id)).error).toBe(
+    expect((await api.completeTask(nextTask.id, taskLink(user.username, nextTask.id))).error).toBe(
       "Daily task limit reached",
     );
-    expect(api.me()?.balance).toBe(DAILY_LIMIT * 50);
+    expect((await api.me())?.balance).toBe(DAILY_LIMIT * 50);
   });
 });
 
@@ -245,22 +250,22 @@ describe("withdrawals", () => {
     await loadApi();
   });
 
-  it("enforces minimum, format and balance rules while the window is open", () => {
-    createUser();
-    api.submitApplication(appInput(ALL_DOMAINS));
-    api.approveApplication();
-    expect(api.setSimulateSaturday(true).user?.simulateSaturday).toBe(true);
+  it("enforces minimum, format and balance rules while the window is open", async () => {
+    await createUser();
+    await api.submitApplication(appInput(ALL_DOMAINS));
+    await api.approveApplication();
+    expect((await api.setSimulateSaturday(true)).user?.simulateSaturday).toBe(true);
 
-    expect(api.requestWithdrawal({ ...WD(withdrawalId()), amount: 100 }).error).toBe(
+    expect((await api.requestWithdrawal({ ...WD(withdrawalId()), amount: 100 })).error).toBe(
       `Minimum withdrawal is ${MIN_WITHDRAW} €`,
     );
-    expect(api.requestWithdrawal({ ...WD(withdrawalId()), method: "" }).error).toBe(
+    expect((await api.requestWithdrawal({ ...WD(withdrawalId()), method: "" })).error).toBe(
       "Choose a payment method",
     );
-    expect(api.requestWithdrawal({ ...WD(withdrawalId()), number: "abc" }).error).toBe(
+    expect((await api.requestWithdrawal({ ...WD(withdrawalId()), number: "abc" })).error).toBe(
       "Enter a valid mobile money number",
     );
-    expect(api.requestWithdrawal(WD(withdrawalId())).error).toBe(
+    expect((await api.requestWithdrawal(WD(withdrawalId()))).error).toBe(
       "Amount is higher than your balance",
     );
   });
@@ -269,11 +274,11 @@ describe("withdrawals", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-03-04T12:00:00Z")); // a Wednesday
     await loadApi();
-    createUser();
-    api.submitApplication(appInput(ALL_DOMAINS));
-    api.approveApplication();
-    expect(api.me()?.simulateSaturday).toBe(false);
-    expect(api.requestWithdrawal(WD(withdrawalId())).error).toBe(
+    await createUser();
+    await api.submitApplication(appInput(ALL_DOMAINS));
+    await api.approveApplication();
+    expect((await api.me())?.simulateSaturday).toBe(false);
+    expect((await api.requestWithdrawal(WD(withdrawalId()))).error).toBe(
       "Withdrawals are only open on Saturdays from 10:00 to 15:00",
     );
   });
@@ -283,26 +288,28 @@ describe("withdrawals", () => {
     const base = new Date("2026-03-02T12:00:00Z"); // a Monday
     vi.setSystemTime(base);
     await loadApi();
-    const user = createUser();
-    api.submitApplication(appInput(ALL_DOMAINS));
-    api.approveApplication();
-    api.setSimulateSaturday(true);
+    const user = await createUser();
+    await api.submitApplication(appInput(ALL_DOMAINS));
+    await api.approveApplication();
+    await api.setSimulateSaturday(true);
 
     const dailyTasks = TASKS.slice(0, DAILY_LIMIT);
     for (let day = 0; day < 5; day++) {
       vi.setSystemTime(base.getTime() + day * 24 * 60 * 60 * 1000);
       for (const task of dailyTasks) {
-        expect(api.completeTask(task.id, taskLink(user.username, task.id)).error).toBeNull();
+        expect(
+          (await api.completeTask(task.id, taskLink(user.username, task.id))).error,
+        ).toBeNull();
       }
     }
-    expect(api.me()?.balance).toBe(5 * DAILY_LIMIT * 50);
+    expect((await api.me())?.balance).toBe(5 * DAILY_LIMIT * 50);
 
     const id = withdrawalId();
-    const result = api.requestWithdrawal({ ...WD(id), method: "Orange Money" });
+    const result = await api.requestWithdrawal({ ...WD(id), method: "Orange Money" });
     expect(result.error).toBeNull();
     expect(requireUser(result).balance).toBe(0);
     expect(requireUser(result).withdrawals.find((w) => w.id === id)?.status).toBe("processing");
-    expect(api.requestWithdrawal({ ...WD(id), method: "Orange Money" }).error).toBe(
+    expect((await api.requestWithdrawal({ ...WD(id), method: "Orange Money" })).error).toBe(
       "Invalid withdrawal request",
     );
   });
@@ -312,15 +319,15 @@ describe("withdrawals", () => {
     const base = new Date("2026-03-02T12:00:00Z");
     vi.setSystemTime(base);
     await loadApi();
-    createUser();
-    api.submitApplication(appInput(ALL_DOMAINS));
-    api.approveApplication();
+    await createUser();
+    await api.submitApplication(appInput(ALL_DOMAINS));
+    await api.approveApplication();
 
     const id = withdrawalId();
-    expect(api.createDemoWithdrawal(id).error).toBeNull();
-    expect(api.me()?.withdrawals.find((w) => w.id === id)?.status).toBe("processing");
+    expect((await api.createDemoWithdrawal(id)).error).toBeNull();
+    expect((await api.me())?.withdrawals.find((w) => w.id === id)?.status).toBe("processing");
 
     vi.setSystemTime(base.getTime() + DEMO_WITHDRAWAL_MS + 500);
-    expect(api.me()?.withdrawals.find((w) => w.id === id)?.status).toBe("paid");
+    expect((await api.me())?.withdrawals.find((w) => w.id === id)?.status).toBe("paid");
   });
 });

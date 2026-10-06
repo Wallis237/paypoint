@@ -1,11 +1,23 @@
-// File-backed database for PayPoint. The data lives in `.data/paypoint.json`
-// so accounts, balances and withdrawals survive reloads and server restarts.
-// Reads/writes are synchronous inside a single event-loop turn, which keeps
-// every read-modify-write cycle atomic for this single-process dev/preview
-// server; swap this module for a hosted database when the app scales.
+// Database for PayPoint with two backends behind one async API:
+//
+// - File (default): `.data/paypoint.json` at the project root. Read/write stays
+//   synchronous inside one event-loop turn, which keeps every read-modify-write
+//   cycle atomic for the single-process dev/preview server. This is what tests
+//   and local development use.
+// - MongoDB (when MONGODB_URI is set): used by the Vercel production build,
+//   where the filesystem is read-only and instances are isolated, so a file
+//   cannot store accounts. Reads and writes go to the `users` and `sessions`
+//   collections; each mutation re-reads, diffs and upserts only the documents
+//   that changed. Concurrent writes to the *same* document from two instances
+//   are last-write-wins — fine at this app's scale, and every individual
+//   document stays internally consistent.
+//
+// Swap in a hosted database with transactions when the app scales.
 
 import fs from "node:fs";
 import path from "node:path";
+
+import { MongoClient, type AnyBulkWriteOperation, type Db as MongoDb } from "mongodb";
 
 import {
   DEMO_WITHDRAWAL_MS,
@@ -40,6 +52,10 @@ export type Db = {
 };
 
 let cache: Db | null = null;
+
+function mongoUri(): string | undefined {
+  return process.env["MONGODB_URI"];
+}
 
 function dbDir() {
   // PAYPOINT_DB_DIR lets tests point at an isolated directory; the app
@@ -98,7 +114,9 @@ function normalize(raw: unknown): Db {
   return { version: DB_VERSION, users, sessions };
 }
 
-export function loadDb(): Db {
+// --- file backend (dev, preview, tests) ------------------------------------
+
+function loadDb(): Db {
   if (cache) return cache;
   let raw: unknown = null;
   try {
@@ -110,13 +128,68 @@ export function loadDb(): Db {
   return cache;
 }
 
-export function saveDb(db: Db): void {
+function saveDb(db: Db): void {
   fs.mkdirSync(dbDir(), { recursive: true });
   const target = dbFile();
   const tmp = `${target}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(db, null, 2), "utf8");
   fs.renameSync(tmp, target);
 }
+
+// --- mongodb backend (production when MONGODB_URI is set) ------------------
+
+let client: MongoClient | null = null;
+
+async function mongo(): Promise<MongoDb> {
+  const uri = mongoUri();
+  if (!uri) throw new Error("MONGODB_URI is not set");
+  if (!client) {
+    client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
+    await client.connect();
+  }
+  return client.db("paypoint");
+}
+
+async function loadFromMongo(): Promise<Db> {
+  const m = await mongo();
+  const [users, sessions] = await Promise.all([
+    m.collection("users").find().toArray(),
+    m.collection("sessions").find().toArray(),
+  ]);
+  return normalize({
+    users: Object.fromEntries(users.map((doc) => [doc["username"], doc])),
+    sessions: Object.fromEntries(sessions.map((doc) => [doc["token"], doc])),
+  });
+}
+
+async function persistDiff(before: Db, after: Db): Promise<void> {
+  const userOps: AnyBulkWriteOperation[] = [];
+  for (const [username, user] of Object.entries(after.users)) {
+    if (JSON.stringify(user) !== JSON.stringify(before.users[username])) {
+      userOps.push({ replaceOne: { filter: { username }, replacement: user, upsert: true } });
+    }
+  }
+  const sessionOps: AnyBulkWriteOperation[] = [];
+  const removedTokens: string[] = [];
+  for (const [token, session] of Object.entries(after.sessions)) {
+    if (JSON.stringify(session) !== JSON.stringify(before.sessions[token])) {
+      sessionOps.push({
+        replaceOne: { filter: { token }, replacement: { token, ...session }, upsert: true },
+      });
+    }
+  }
+  for (const token of Object.keys(before.sessions)) {
+    if (!after.sessions[token]) removedTokens.push(token);
+  }
+  if (!userOps.length && !sessionOps.length && !removedTokens.length) return;
+  const m = await mongo();
+  if (userOps.length) await m.collection("users").bulkWrite(userOps);
+  if (sessionOps.length) await m.collection("sessions").bulkWrite(sessionOps);
+  if (removedTokens.length)
+    await m.collection("sessions").deleteMany({ token: { $in: removedTokens } });
+}
+
+// --- shared time transitions -----------------------------------------------
 
 // Time-based transitions that must happen even when nobody writes:
 // applications are auto-approved after the review window and demo withdrawals
@@ -152,22 +225,41 @@ export function applyTimeTransitions(db: Db, now = Date.now()): boolean {
   return changed;
 }
 
+// --- public async API -------------------------------------------------------
+
 // Read access: applies time transitions and persists them when they fired.
-export function readDb(): Db {
+export async function readDb(): Promise<Db> {
+  if (mongoUri()) {
+    const db = await loadFromMongo();
+    const before = structuredClone(db);
+    if (applyTimeTransitions(db)) await persistDiff(before, db);
+    return db;
+  }
   const db = loadDb();
   if (applyTimeTransitions(db)) saveDb(db);
   return db;
 }
 
-// Write access: runs `fn` and persists whatever it changed, in the same
-// synchronous turn so concurrent handlers cannot interleave.
-export function mutate<T>(fn: (db: Db) => T): T {
+// Write access: runs `fn` and persists whatever it changed. On the file
+// backend the load→fn→save sequence contains no await, so concurrent handlers
+// cannot interleave; on MongoDB the same happens per document via upserts.
+export async function mutate<T>(fn: (db: Db) => T): Promise<T> {
+  if (mongoUri()) {
+    const db = await loadFromMongo();
+    const before = structuredClone(db);
+    applyTimeTransitions(db);
+    const result = fn(db);
+    await persistDiff(before, db);
+    return result;
+  }
   const db = loadDb();
   applyTimeTransitions(db);
   const result = fn(db);
   saveDb(db);
   return result;
 }
+
+// --- sessions and shaping ---------------------------------------------------
 
 export function createSession(db: Db, username: string, now = Date.now()): string {
   const tokenBytes = new Uint8Array(32);
