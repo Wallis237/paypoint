@@ -169,6 +169,10 @@ async function persistDiff(before: Db, after: Db): Promise<void> {
       userOps.push({ replaceOne: { filter: { username }, replacement: user, upsert: true } });
     }
   }
+  const removedUsernames: string[] = [];
+  for (const username of Object.keys(before.users)) {
+    if (!after.users[username]) removedUsernames.push(username);
+  }
   const sessionOps: AnyBulkWriteOperation[] = [];
   const removedTokens: string[] = [];
   for (const [token, session] of Object.entries(after.sessions)) {
@@ -181,9 +185,12 @@ async function persistDiff(before: Db, after: Db): Promise<void> {
   for (const token of Object.keys(before.sessions)) {
     if (!after.sessions[token]) removedTokens.push(token);
   }
-  if (!userOps.length && !sessionOps.length && !removedTokens.length) return;
+  if (!userOps.length && !removedUsernames.length && !sessionOps.length && !removedTokens.length)
+    return;
   const m = await mongo();
   if (userOps.length) await m.collection("users").bulkWrite(userOps);
+  if (removedUsernames.length)
+    await m.collection("users").deleteMany({ username: { $in: removedUsernames } });
   if (sessionOps.length) await m.collection("sessions").bulkWrite(sessionOps);
   if (removedTokens.length)
     await m.collection("sessions").deleteMany({ token: { $in: removedTokens } });
