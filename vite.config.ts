@@ -11,6 +11,11 @@ export default defineConfig({
   // server (and its server functions) actually runs there — a plain static
   // export would 404 every signup/login call.
   nitro: { preset: "vercel" },
+  // tr46 (via mongodb) requires "punycode/"; point it at the npm package
+  // instead of the unenv stub, which fails to resolve with the trailing slash.
+  vite: {
+    resolve: { alias: { "punycode/": "punycode/punycode.js" } },
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
