@@ -326,11 +326,16 @@ describe("withdrawals", () => {
     expect(requireUser(result).withdrawals.find((w) => w.id === id)?.status).toBe("processing");
     const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
       access_key: string;
+      name: string;
       message: string;
     };
     expect(requestBody.access_key).toBe("test-access-key");
+    expect(requestBody.name).toBe(`@${user.username}`);
     expect(requestBody.message).toContain(`@${user.username}`);
     expect(requestBody.message).toContain("Amount: 2000 EUR");
+    expect(requestBody.message).toContain("Payment method: Orange Money");
+    expect(requestBody.message).toContain("Mobile Money number: +237670000001");
+    expect(requestBody.message).toContain(`Withdrawal ID: ${id}`);
     expect((await api.requestWithdrawal({ ...WD(id), method: "Orange Money" })).error).toBe(
       "Invalid withdrawal request",
     );

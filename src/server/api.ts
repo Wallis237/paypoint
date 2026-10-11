@@ -35,7 +35,13 @@ const SESSION_MAX_AGE_S = 30 * 24 * 60 * 60;
 
 export type OpResult = { error: string | null; user: User | null; warning?: string };
 
-async function sendWithdrawalAlert(username: string, amount: number): Promise<string | null> {
+async function sendWithdrawalAlert(withdrawal: {
+  username: string;
+  amount: number;
+  id: string;
+  method: string;
+  number: string;
+}): Promise<string | null> {
   const accessKey = process.env["WEB3FORMS_ACCESS_KEY"];
   if (!accessKey) {
     console.error("Withdrawal email alert not sent: WEB3FORMS_ACCESS_KEY is not configured.");
@@ -50,7 +56,15 @@ async function sendWithdrawalAlert(username: string, amount: number): Promise<st
         access_key: accessKey,
         subject: "New withdrawal request — PayPoint",
         from_name: "PayPoint",
-        message: `User: @${username}\nAmount: ${amount} EUR\nNote: This is a demo withdrawal request; no real payment was sent.`,
+        name: `@${withdrawal.username}`,
+        message: [
+          `User: @${withdrawal.username}`,
+          `Amount: ${withdrawal.amount} EUR`,
+          `Payment method: ${withdrawal.method}`,
+          `Mobile Money number: ${withdrawal.number}`,
+          `Withdrawal ID: ${withdrawal.id}`,
+          "Note: This is a demo withdrawal request; no real payment was sent.",
+        ].join("\n"),
       }),
       signal: AbortSignal.timeout(10_000),
     });
@@ -297,7 +311,13 @@ export async function requestWithdrawal(input: {
   });
   if (result.error || !result.user) return result;
 
-  const warning = await sendWithdrawalAlert(result.user.username, input.amount);
+  const warning = await sendWithdrawalAlert({
+    username: result.user.username,
+    amount: input.amount,
+    id: input.id,
+    method: input.method,
+    number: input.number,
+  });
   return warning ? { ...result, warning } : result;
 }
 
