@@ -63,6 +63,7 @@ const copy = {
   amount: { fr: "Montant", en: "Amount" },
   requestWithdrawal: { fr: "Demander le retrait", en: "Request withdrawal" },
   withdrawalSuccess: { fr: "Retrait démo demandé — aucun argent ne sera envoyé.", en: "Demo withdrawal requested — no money will be sent." },
+  withdrawalAlertFailed: { fr: "Votre demande de retrait a bien été enregistrée, mais l’alerte e-mail n’a pas pu être envoyée.", en: "Your withdrawal was saved, but its email alert could not be sent." },
   demoPayoutNotice: { fr: "Simulation uniquement — aucun argent réel n’est envoyé.", en: "Simulation only — no real money is sent." },
   demoWithdraw: { fr: "Démo : simuler un retrait de 2 000 €", en: "Demo: simulate a €2,000 withdrawal" },
   withdrawalTracking: { fr: "Suivi du retrait", en: "Withdrawal tracking" },

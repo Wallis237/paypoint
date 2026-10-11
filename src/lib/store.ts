@@ -89,8 +89,14 @@ export async function requestWithdrawal(
   method: string,
   number: string,
   id: string,
-): Promise<string | null> {
-  return mutate(() => server.requestWithdrawal({ data: { amount, method, number, id } }));
+): Promise<{ error: string | null; warning: string | null }> {
+  try {
+    const result = await server.requestWithdrawal({ data: { amount, method, number, id } });
+    writeMe(result);
+    return { error: result.error, warning: result.warning ?? null };
+  } catch {
+    return { error: NETWORK_ERROR, warning: null };
+  }
 }
 
 export async function demoWithdrawal(): Promise<{ id: string; error: string | null }> {

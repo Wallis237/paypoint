@@ -110,7 +110,7 @@ function Wallet() {
   if (!user) return null;
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      <form className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6" onSubmit={async (e) => { e.preventDefault(); const id = crypto.randomUUID(); const r = await requestWithdrawal(Number(amount), method, num, id); if (r) setMsg({ ok: false, t: localizedError(r, language) }); else navigate({ to: "/withdrawals/$id", params: { id } }); }}>
+      <form className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6" onSubmit={async (e) => { e.preventDefault(); const id = crypto.randomUUID(); const result = await requestWithdrawal(Number(amount), method, num, id); if (result.error) setMsg({ ok: false, t: localizedError(result.error, language) }); else navigate({ to: "/withdrawals/$id", params: { id }, search: { notification: result.warning ? "failed" : undefined } }); }}>
         <h2 className="font-display text-2xl font-bold">{t("withdraw")}</h2>
         <p className="text-sm text-muted-foreground">{t("walletHelp")}</p>
         <p className="rounded-lg bg-secondary p-3 text-sm font-semibold text-secondary-foreground">{t("demoPayoutNotice")}</p>

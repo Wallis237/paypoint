@@ -35,6 +35,7 @@ type Api = typeof import("../server/api");
 
 let api: Api;
 let originalDbDir: string | undefined;
+let originalWeb3FormsKey: string | undefined;
 const tempDirs: string[] = [];
 
 async function loadApi(): Promise<Api> {
@@ -84,18 +85,24 @@ const WD = (id: string) => ({
 
 beforeAll(() => {
   originalDbDir = process.env["PAYPOINT_DB_DIR"];
+  originalWeb3FormsKey = process.env["WEB3FORMS_ACCESS_KEY"];
   // Force the file backend: these tests must never talk to a real MongoDB.
   delete process.env["MONGODB_URI"];
+  delete process.env["WEB3FORMS_ACCESS_KEY"];
 });
 
 afterAll(() => {
   if (originalDbDir === undefined) delete process.env["PAYPOINT_DB_DIR"];
   else process.env["PAYPOINT_DB_DIR"] = originalDbDir;
+  if (originalWeb3FormsKey === undefined) delete process.env["WEB3FORMS_ACCESS_KEY"];
+  else process.env["WEB3FORMS_ACCESS_KEY"] = originalWeb3FormsKey;
   for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("accounts and sessions", () => {
@@ -250,6 +257,25 @@ describe("withdrawals", () => {
     await loadApi();
   });
 
+  async function earnMinimumWithdrawalBalance(): Promise<User> {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const base = new Date("2026-03-02T12:00:00Z");
+    vi.setSystemTime(base);
+    const user = await createUser();
+    await api.submitApplication(appInput(ALL_DOMAINS));
+    await api.approveApplication();
+    await api.setSimulateSaturday(true);
+
+    const dailyTasks = TASKS.slice(0, DAILY_LIMIT);
+    for (let day = 0; day < MIN_WITHDRAW / (DAILY_LIMIT * 50); day++) {
+      vi.setSystemTime(base.getTime() + day * 24 * 60 * 60 * 1000);
+      for (const task of dailyTasks) {
+        expect((await api.completeTask(task.id, taskLink(user.username, task.id))).error).toBeNull();
+      }
+    }
+    return user;
+  }
+
   it("enforces minimum, format and balance rules while the window is open", async () => {
     await createUser();
     await api.submitApplication(appInput(ALL_DOMAINS));
@@ -284,34 +310,48 @@ describe("withdrawals", () => {
   });
 
   it("accumulates earnings across days and pays out the balance", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    const base = new Date("2026-03-02T12:00:00Z"); // a Monday
-    vi.setSystemTime(base);
-    await loadApi();
-    const user = await createUser();
-    await api.submitApplication(appInput(ALL_DOMAINS));
-    await api.approveApplication();
-    await api.setSimulateSaturday(true);
-
-    const dailyTasks = TASKS.slice(0, DAILY_LIMIT);
-    for (let day = 0; day < 5; day++) {
-      vi.setSystemTime(base.getTime() + day * 24 * 60 * 60 * 1000);
-      for (const task of dailyTasks) {
-        expect(
-          (await api.completeTask(task.id, taskLink(user.username, task.id))).error,
-        ).toBeNull();
-      }
-    }
+    const user = await earnMinimumWithdrawalBalance();
+    process.env["WEB3FORMS_ACCESS_KEY"] = "test-access-key";
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ success: true }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
     expect((await api.me())?.balance).toBe(5 * DAILY_LIMIT * 50);
 
     const id = withdrawalId();
     const result = await api.requestWithdrawal({ ...WD(id), method: "Orange Money" });
     expect(result.error).toBeNull();
+    expect(result.warning).toBeUndefined();
     expect(requireUser(result).balance).toBe(0);
     expect(requireUser(result).withdrawals.find((w) => w.id === id)?.status).toBe("processing");
+    const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      access_key: string;
+      message: string;
+    };
+    expect(requestBody.access_key).toBe("test-access-key");
+    expect(requestBody.message).toContain(`@${user.username}`);
+    expect(requestBody.message).toContain("Amount: 2000 EUR");
     expect((await api.requestWithdrawal({ ...WD(id), method: "Orange Money" })).error).toBe(
       "Invalid withdrawal request",
     );
+  });
+
+  it("keeps a withdrawal saved and reports when its email alert fails", async () => {
+    const user = await earnMinimumWithdrawalBalance();
+    process.env["WEB3FORMS_ACCESS_KEY"] = "test-access-key";
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ success: false }), { status: 400 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const id = withdrawalId();
+    const result = await api.requestWithdrawal(WD(id));
+
+    expect(result.error).toBeNull();
+    expect(result.warning).toBe("The withdrawal was saved, but its email alert could not be sent.");
+    expect(requireUser(result).balance).toBe(0);
+    expect(requireUser(result).withdrawals.find((w) => w.id === id)?.amount).toBe(MIN_WITHDRAW);
   });
 
   it("marks demo payouts paid once the simulation elapses", async () => {

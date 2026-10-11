@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { currentUser, logout, useDB } from "@/lib/store";
 import { useLanguage } from "@/lib/i18n";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function SiteHeader() {
   const db = useDB();
@@ -10,7 +11,10 @@ export function SiteHeader() {
   return (
     <header className="border-b border-border bg-background/90 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4">
-        <Link to="/" className="font-display text-xl font-bold text-primary sm:text-2xl">PayPoint<span className="text-accent">.</span></Link>
+        <Link to="/" className="flex items-center gap-2 font-display text-xl font-bold text-primary sm:text-2xl">
+          <img src="/logo.jpg" alt="" aria-hidden="true" className="size-8 rounded-lg object-cover" />
+          PayPoint<span className="text-accent">.</span>
+        </Link>
         <nav className="flex items-center gap-1.5 text-xs font-medium sm:gap-3 sm:text-sm">
           <div className="flex rounded-full border border-border p-0.5" aria-label="Langue / Language">
             {(["fr", "en"] as const).map((code) => <button key={code} type="button" onClick={() => setLanguage(code)} className={`rounded-full px-2 py-1 text-xs font-bold uppercase ${language === code ? "bg-foreground text-background" : "text-muted-foreground"}`}>{code}</button>)}
@@ -18,7 +22,14 @@ export function SiteHeader() {
           {user ? (
             <>
               <Link to="/dashboard" className="hover:text-primary">{t("dashboard")}</Link>
-              <span className="hidden text-muted-foreground sm:inline">@{user.username}</span>
+              <div className="flex items-center gap-2">
+                <Avatar role="img" aria-label={`@${user.username}`} className="size-8 border border-border">
+                  <AvatarFallback className="bg-secondary text-xs font-bold text-secondary-foreground">
+                    {user.username.slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="hidden text-muted-foreground sm:inline">@{user.username}</span>
+              </div>
               <button onClick={async () => { await logout(); nav({ to: "/", replace: true }); }} className="rounded-full border border-border px-4 py-2 hover:bg-secondary">{t("signOut")}</button>
             </>
           ) : (

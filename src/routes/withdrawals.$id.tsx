@@ -7,6 +7,9 @@ import { currentUser, DEMO_WITHDRAWAL_MS, eur, finishDemoWithdrawal, useDB } fro
 import { useLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/withdrawals/$id")({
+  validateSearch: (search: Record<string, unknown>): { notification?: "failed" } => ({
+    notification: search["notification"] === "failed" ? "failed" : undefined,
+  }),
   head: () => ({ meta: [
     { title: "Suivi du retrait démo — PayPoint" },
     { name: "description", content: "Suivez le traitement et la confirmation de votre retrait simulé PayPoint. Aucun paiement réel." },
@@ -20,6 +23,7 @@ export const Route = createFileRoute("/withdrawals/$id")({
 
 function WithdrawalPage() {
   const { id } = Route.useParams();
+  const { notification } = Route.useSearch();
   const db = useDB();
   const user = currentUser(db);
   const withdrawal = user?.withdrawals.find((w) => w.id === id);
@@ -38,6 +42,7 @@ function WithdrawalPage() {
     <Button asChild variant="ghost" className="mb-8"><Link to="/dashboard" search={{ wallet: true }}><ArrowLeft />{t("returnWallet")}</Link></Button>
     {!db ? null : !user ? <Link to="/login" className="text-primary underline">{t("pleaseSignIn")}</Link> : !withdrawal ? <h1 className="text-xl font-semibold">{t("withdrawalMissing")}</h1> : <>
       <p className="mb-6 rounded-lg border border-border bg-secondary p-4 text-sm font-medium text-secondary-foreground">{t("demoPayoutNotice")}</p>
+      {notification === "failed" && <p role="alert" className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">{t("withdrawalAlertFailed")}</p>}
       <div className="text-center" role="status" aria-live="polite">
         {paid ? <CheckCircle2 className="mx-auto mb-5 size-16 text-primary" /> : <LoaderCircle className="mx-auto mb-5 size-16 animate-spin text-primary motion-reduce:animate-none" />}
         <p className="text-sm text-muted-foreground">{t("withdrawalTracking")}</p>

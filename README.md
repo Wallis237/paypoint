@@ -25,6 +25,17 @@ Accounts, applications, task rewards and withdrawals run on a real backend built
 - `src/server/db.ts` — the database: MongoDB (Atlas) whenever `MONGODB_URI` is set (production on Vercel), otherwise a file-backed store at `.data/paypoint.json` (gitignored) with atomic writes. Both backends share the same automatic time transitions (application reviews auto-approve after 10 minutes, demo withdrawals auto-pay after 8 seconds).
 - `src/lib/catalog.ts` — shared types and constants (domains, tasks, payment methods) used by both sides.
 
+## Withdrawal email alerts
+
+Withdrawal form submissions send an email through [Web3Forms](https://web3forms.com/), including the account username and requested amount. These are demo requests only; no real payment is sent. Create a Web3Forms access key for the destination inbox, then configure it as the server-side `WEB3FORMS_ACCESS_KEY` environment variable in your local environment and deployment settings. Do not add the key to client-side `VITE_*` variables or commit it. If delivery fails, the withdrawal remains saved and the tracking page shows an alert.
+
+For local development in PowerShell, set the key before starting the server:
+
+```powershell
+$env:WEB3FORMS_ACCESS_KEY = "<your Web3Forms access key>"
+npm run dev
+```
+
 ## Development
 
 Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
