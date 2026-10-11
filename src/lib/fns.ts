@@ -9,7 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import type { Application, User } from "@/lib/catalog";
 
-export type OpResult = { error: string | null; user: User | null; warning?: string };
+export type OpResult = { error: string | null; user: User | null };
 export type MeResult = { user: User | null };
 
 export const getMe = createServerFn({ method: "POST" }).handler(async (): Promise<MeResult> => {

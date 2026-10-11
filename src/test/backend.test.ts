@@ -35,7 +35,6 @@ type Api = typeof import("../server/api");
 
 let api: Api;
 let originalDbDir: string | undefined;
-let originalWeb3FormsKey: string | undefined;
 const tempDirs: string[] = [];
 
 async function loadApi(): Promise<Api> {
@@ -85,23 +84,20 @@ const WD = (id: string) => ({
 
 beforeAll(() => {
   originalDbDir = process.env["PAYPOINT_DB_DIR"];
-  originalWeb3FormsKey = process.env["WEB3FORMS_ACCESS_KEY"];
   // Force the file backend: these tests must never talk to a real MongoDB.
   delete process.env["MONGODB_URI"];
-  delete process.env["WEB3FORMS_ACCESS_KEY"];
 });
 
 afterAll(() => {
   if (originalDbDir === undefined) delete process.env["PAYPOINT_DB_DIR"];
   else process.env["PAYPOINT_DB_DIR"] = originalDbDir;
-  if (originalWeb3FormsKey === undefined) delete process.env["WEB3FORMS_ACCESS_KEY"];
-  else process.env["WEB3FORMS_ACCESS_KEY"] = originalWeb3FormsKey;
   for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
 });
 
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -310,8 +306,7 @@ describe("withdrawals", () => {
   });
 
   it("accumulates earnings across days and pays out the balance", async () => {
-    const user = await earnMinimumWithdrawalBalance();
-    process.env["WEB3FORMS_ACCESS_KEY"] = "test-access-key";
+    await earnMinimumWithdrawalBalance();
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ success: true }), { status: 200 }),
     );
@@ -321,42 +316,12 @@ describe("withdrawals", () => {
     const id = withdrawalId();
     const result = await api.requestWithdrawal({ ...WD(id), method: "Orange Money" });
     expect(result.error).toBeNull();
-    expect(result.warning).toBeUndefined();
     expect(requireUser(result).balance).toBe(0);
     expect(requireUser(result).withdrawals.find((w) => w.id === id)?.status).toBe("processing");
-    const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
-      access_key: string;
-      name: string;
-      message: string;
-    };
-    expect(requestBody.access_key).toBe("test-access-key");
-    expect(requestBody.name).toBe(`@${user.username}`);
-    expect(requestBody.message).toContain(`@${user.username}`);
-    expect(requestBody.message).toContain("Amount: 2000 EUR");
-    expect(requestBody.message).toContain("Payment method: Orange Money");
-    expect(requestBody.message).toContain("Mobile Money number: +237670000001");
-    expect(requestBody.message).toContain(`Withdrawal ID: ${id}`);
+    expect(fetchMock).not.toHaveBeenCalled();
     expect((await api.requestWithdrawal({ ...WD(id), method: "Orange Money" })).error).toBe(
       "Invalid withdrawal request",
     );
-  });
-
-  it("keeps a withdrawal saved and reports when its email alert fails", async () => {
-    const user = await earnMinimumWithdrawalBalance();
-    process.env["WEB3FORMS_ACCESS_KEY"] = "test-access-key";
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ success: false }), { status: 400 }),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
-    const id = withdrawalId();
-    const result = await api.requestWithdrawal(WD(id));
-
-    expect(result.error).toBeNull();
-    expect(result.warning).toBe("The withdrawal was saved, but its email alert could not be sent.");
-    expect(requireUser(result).balance).toBe(0);
-    expect(requireUser(result).withdrawals.find((w) => w.id === id)?.amount).toBe(MIN_WITHDRAW);
   });
 
   it("marks demo payouts paid once the simulation elapses", async () => {

@@ -27,12 +27,12 @@ Accounts, applications, task rewards and withdrawals run on a real backend built
 
 ## Withdrawal email alerts
 
-Withdrawal form submissions send an email through [Web3Forms](https://web3forms.com/), including the account username, amount, payment method, mobile money number and withdrawal ID. These are demo requests only; no real payment is sent. Create a Web3Forms access key for the destination inbox, then configure it as the server-side `WEB3FORMS_ACCESS_KEY` environment variable in your local environment and deployment settings. Do not add the key to client-side `VITE_*` variables or commit it. If delivery fails, the withdrawal remains saved and the tracking page shows an alert.
+Withdrawal form submissions send an email through [Web3Forms](https://web3forms.com/), including the account username, amount, payment method, mobile money number and withdrawal ID. These are demo requests only; no real payment is sent. The withdrawal is validated and saved on the server first; the browser then submits the notification to Web3Forms. Web3Forms access keys are public, and its API expects client-side submissions; server-side submissions can be rejected unless the server is allowlisted on a paid plan. Configure `VITE_WEB3FORMS_ACCESS_KEY` in local development and the deployment's build environment, then rebuild/redeploy. Do not commit the key. If delivery fails, the withdrawal remains saved and the tracking page shows an alert. Web3Forms may restrict free hosted subdomains; use an eligible custom domain or contact Web3Forms if its domain restriction rejects the submission.
 
 For local development in PowerShell, set the key before starting the server:
 
 ```powershell
-$env:WEB3FORMS_ACCESS_KEY = "<your Web3Forms access key>"
+$env:VITE_WEB3FORMS_ACCESS_KEY = "<your Web3Forms access key>"
 npm run dev
 ```
 

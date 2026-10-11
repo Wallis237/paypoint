@@ -9,6 +9,7 @@ import { useQuery, type QueryClient } from "@tanstack/react-query";
 import * as server from "@/lib/fns";
 
 import type { Application, User } from "./catalog";
+import { sendWithdrawalAlert } from "./web3forms";
 
 export * from "./catalog";
 
@@ -93,7 +94,15 @@ export async function requestWithdrawal(
   try {
     const result = await server.requestWithdrawal({ data: { amount, method, number, id } });
     writeMe(result);
-    return { error: result.error, warning: result.warning ?? null };
+    if (result.error || !result.user) return { error: result.error, warning: null };
+    const warning = await sendWithdrawalAlert({
+      username: result.user.username,
+      amount,
+      method,
+      number,
+      id,
+    });
+    return { error: null, warning };
   } catch {
     return { error: NETWORK_ERROR, warning: null };
   }

@@ -33,58 +33,7 @@ import {
 export const SESSION_COOKIE = "pp_session";
 const SESSION_MAX_AGE_S = 30 * 24 * 60 * 60;
 
-export type OpResult = { error: string | null; user: User | null; warning?: string };
-
-async function sendWithdrawalAlert(withdrawal: {
-  username: string;
-  amount: number;
-  id: string;
-  method: string;
-  number: string;
-}): Promise<string | null> {
-  const accessKey = process.env["WEB3FORMS_ACCESS_KEY"];
-  if (!accessKey) {
-    console.error("Withdrawal email alert not sent: WEB3FORMS_ACCESS_KEY is not configured.");
-    return "The withdrawal was saved, but its email alert could not be sent.";
-  }
-
-  try {
-    const response = await fetch("https://api.web3forms.com/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        access_key: accessKey,
-        subject: "New withdrawal request — PayPoint",
-        from_name: "PayPoint",
-        name: `@${withdrawal.username}`,
-        message: [
-          `User: @${withdrawal.username}`,
-          `Amount: ${withdrawal.amount} EUR`,
-          `Payment method: ${withdrawal.method}`,
-          `Mobile Money number: ${withdrawal.number}`,
-          `Withdrawal ID: ${withdrawal.id}`,
-          "Note: This is a demo withdrawal request; no real payment was sent.",
-        ].join("\n"),
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    const result: unknown = await response.json();
-    if (
-      !response.ok ||
-      !result ||
-      typeof result !== "object" ||
-      !("success" in result) ||
-      result.success !== true
-    ) {
-      console.error("Web3Forms rejected the withdrawal email alert.", { status: response.status });
-      return "The withdrawal was saved, but its email alert could not be sent.";
-    }
-    return null;
-  } catch (error) {
-    console.error("Failed to send the withdrawal email alert through Web3Forms.", error);
-    return "The withdrawal was saved, but its email alert could not be sent.";
-  }
-}
+export type OpResult = { error: string | null; user: User | null };
 
 // --- passwords -------------------------------------------------------------
 
@@ -277,7 +226,7 @@ export async function requestWithdrawal(input: {
   number: string;
   id: string;
 }): Promise<OpResult> {
-  const result = await mutate((db) => {
+  return mutate((db) => {
     const user = sessionUser(db);
     if (!user) return { error: "Not signed in", user: null };
     const blocked = requireAccepted(user);
@@ -309,16 +258,6 @@ export async function requestWithdrawal(input: {
     });
     return { error: null, user: toPublicUser(user) };
   });
-  if (result.error || !result.user) return result;
-
-  const warning = await sendWithdrawalAlert({
-    username: result.user.username,
-    amount: input.amount,
-    id: input.id,
-    method: input.method,
-    number: input.number,
-  });
-  return warning ? { ...result, warning } : result;
 }
 
 export async function createDemoWithdrawal(id: string): Promise<OpResult> {
